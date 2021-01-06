@@ -8,10 +8,7 @@ rule bam_to_fastq:
 		mem = 1000
 	threads: 1
 	shell:
-		"""
-		module load samtools-1.6
-		samtools fastq -F 2816 -0 {output} -c 6 {input}
-		"""
+		"samtools fastq -F 2816 -0 {output} -c 6 {input}"
 
 #Make sure that all final output files get created
 rule make_all:
@@ -24,4 +21,7 @@ rule make_all:
 	threads: 1
 	shell:
 		"echo 'Done' > {output}"
+
+#module load samtools-1.6
+
 
