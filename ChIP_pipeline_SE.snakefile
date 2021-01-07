@@ -1,8 +1,8 @@
 import uuid
 import os
 
-#Align reads to the reference genome using BWA-ALN (<70bp SE reads)
-rule align_with_bwa_aln:
+#Align reads to the reference genome using bowtie2 aligner 
+rule align_with_bt_aln:
 	input:
 		"processed/{dataset}/fastq/{sample}.fastq.gz"
 	output:
@@ -10,29 +10,33 @@ rule align_with_bwa_aln:
 	params:
 		index_dir = config["bt_index_dir"],
 		index_name = config["bt_index_name"],
+		basename = config["bt_basename"],
 		rg="@RG\tID:{sample}\tSM:{sample}",
 		tmp_fq = "/tmp/" + uuid.uuid4().hex + ".fastq.gz",
-		tmp_sai = "/tmp/" + uuid.uuid4().hex + ".sai",
+		tmp_sam = "/tmp/" + uuid.uuid4().hex + ".sam",
 		tmp_bam = "/tmp/" + uuid.uuid4().hex + ".bam",
 		tmp_index_dir = "/tmp/" + uuid.uuid4().hex + "/"
 	resources:
 		mem = 12000
-	threads: 8
+	threads: 2
 	shell:
 		"""
 		cp {input} {params.tmp_fq}
 		mkdir {params.tmp_index_dir}
-		cp {params.index_dir}/* {params.tmp_index_dir}
-		bwa aln -t {threads} {params.tmp_index_dir}{params.index_name} {params.tmp_fq} > {params.tmp_sai}
-		bwa samse -r '{params.rg}' {params.tmp_index_dir}{params.index_name} {params.tmp_sai} {params.tmp_fq} | samtools view -b - > {params.tmp_bam}
+		cp "{params.index_dir}"/* {params.tmp_index_dir}
+		# ls {params.tmp_index_dir}
+		bowtie2 -p {threads} -q --local -x {params.tmp_index_dir}{params.basename} -U {params.tmp_fq} -S {params.tmp_sam}
+		samtools view -S -b {params.tmp_sam} > {params.tmp_bam}
 		cp {params.tmp_bam} {output}
 		rm {params.tmp_bam}
-		rm {params.tmp_sai}
+		rm {params.tmp_sam}
 		rm {params.tmp_fq}
 		rm -r {params.tmp_index_dir}
 		"""
 # module load samtools-1.6
 # module load bwa-0.7.12
+# bwa aln -t {threads} {params.tmp_index_dir}{params.index_name} {params.tmp_fq} > {params.tmp_sai}
+# bwa samse -r '{params.rg}' {params.tmp_index_dir}{params.index_name} {params.tmp_sai} {params.tmp_fq} | samtools view -b - > {params.tmp_bam}
 
 #Sort BAM files by coordinates
 rule sort_bams_by_position:
