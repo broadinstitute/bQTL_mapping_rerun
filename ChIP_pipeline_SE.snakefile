@@ -8,8 +8,8 @@ rule align_with_bwa_aln:
 	output:
 		temp("processed/{dataset}/aligned/{sample}.bam")
 	params:
-		index_dir = config["bwa_index_dir"],
-		index_name = config["bwa_index_name"],
+		index_dir = config["bt_index_dir"],
+		index_name = config["bt_index_name"],
 		rg="@RG\tID:{sample}\tSM:{sample}",
 		tmp_fq = "/tmp/" + uuid.uuid4().hex + ".fastq.gz",
 		tmp_sai = "/tmp/" + uuid.uuid4().hex + ".sai",
@@ -20,8 +20,6 @@ rule align_with_bwa_aln:
 	threads: 8
 	shell:
 		"""
-		module load samtools-1.6
-		module load bwa-0.7.12
 		cp {input} {params.tmp_fq}
 		mkdir {params.tmp_index_dir}
 		cp {params.index_dir}/* {params.tmp_index_dir}
@@ -33,6 +31,8 @@ rule align_with_bwa_aln:
 		rm {params.tmp_fq}
 		rm -r {params.tmp_index_dir}
 		"""
+# module load samtools-1.6
+# module load bwa-0.7.12
 
 #Sort BAM files by coordinates
 rule sort_bams_by_position:
@@ -47,13 +47,13 @@ rule sort_bams_by_position:
 	threads: 4
 	shell:
 		"""
-		module load samtools-1.6
 		mkdir {params.local_tmp}
 		cp {input} {params.local_tmp}/{wildcards.sample}.bam
 		samtools sort -T {params.local_tmp}/{wildcards.sample} -O bam -@ {threads} -o {params.local_tmp}/{wildcards.sample}.sortedByCoords.bam {params.local_tmp}/{wildcards.sample}.bam
 		cp {params.local_tmp}/{wildcards.sample}.sortedByCoords.bam {output}
 		rm -r {params.local_tmp}
 		"""
+# module load samtools-1.6
 
 #Index sorted bams
 rule index_bams:
@@ -66,9 +66,9 @@ rule index_bams:
 	threads: 1
 	shell:
 		"""
-		module load samtools-1.6
 		samtools index {input}
 		"""
+# module load samtools-1.6
 
 #Keep only properly paired reads from nuclear chromosomes (remove MT)
 rule filter_properly_paired:
@@ -84,9 +84,9 @@ rule filter_properly_paired:
 		chr_list = "1 10 11 12 13 14 15 16 17 18 19 2 20 21 22 3 4 5 6 7 8 9 X Y"
 	shell:
 		"""
-		module load samtools-1.6
 		samtools view -h -b {input.bam} {params.chr_list} > {output}
 		"""
+# module load samtools-1.6
 
 #Remove BWA entry from the BAM file header (conflicts with MarkDuplicates)
 rule remove_bwa_header:
@@ -100,10 +100,10 @@ rule remove_bwa_header:
 	threads: 1
 	shell:
 		"""
-		module load samtools-1.6
 		samtools view -H {input} | grep -v 'ID:bwa' > {output.new_header}
 		samtools reheader {output.new_header} {input} > {output.bam}
 		"""
+# module load samtools-1.6
 
 #Remove duplicates using Picard MarkDuplicates
 rule remove_duplicates:
@@ -117,9 +117,9 @@ rule remove_duplicates:
 	threads: 4
 	shell:
 		"""
-		module load jdk-1.8.0_25
 		java -jar {config[picard_path]} MarkDuplicates I={input} O={output.bam} REMOVE_DUPLICATES=true VALIDATION_STRINGENCY=LENIENT METRICS_FILE={output.metrics}
 		"""
+# module load jdk-1.8.0_25
 
 # Produce peaks
 rule peaks:
@@ -140,7 +140,6 @@ rule peaks:
     	tempSummits = "{sample}_summits.bed",
     shell:
     	"""
-        module load MACS-2.1.0 &&
         mkdir {params.tmpOut} &&
         cp {input} {params.tmpIn} &&
         macs2 callpeak -t {params.tmpIn} -q 0.01 -n {wildcards.sample} --outdir {params.tmpOut} -f BAM &&
@@ -152,6 +151,7 @@ rule peaks:
         rm -r {params.tmpOut} &&
         rm {params.tmpIn}
         """
+# module load MACS-2.1.0 &&
 
 rule feat_cnt:
     input:
