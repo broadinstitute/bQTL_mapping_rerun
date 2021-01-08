@@ -31,7 +31,7 @@
 
 #Process PU.1 data
 #Convert bams to fastq files
-# snakemake -n processed/PU1/out.txt -s bam_to_fastq_SE.snakefile --configfile configs/config_PU1.yaml --cores 5
+# snakemake processed/PU1/out.txt -s bam_to_fastq_SE.snakefile --configfile configs/config_PU1.yaml --cores 5
 
 #Run the processing pipeline
 snakemake processed/PU1/out.txt -s ChIP_pipeline_SE.snakefile --configfile configs/config_PU1.yaml --cores 5
