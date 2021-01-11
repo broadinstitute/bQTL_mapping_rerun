@@ -33,6 +33,9 @@
 #Convert bams to fastq files
 # snakemake processed/PU1/out.txt -s bam_to_fastq_SE.snakefile --configfile configs/config_PU1.yaml --cores 5
 
+# Login for gcloud for google bucket access
+gcloud auth login
+
 #Run the processing pipeline
 snakemake processed/PU1/out.txt -s ChIP_pipeline_SE.snakefile --configfile configs/config_PU1.yaml --cores 5
 
