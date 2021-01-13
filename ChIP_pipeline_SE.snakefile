@@ -6,17 +6,19 @@ GS = GSRemoteProvider()
 # Copy input bams from Google Bucket
 rule get_input_files: 
 	input: 
-		GS.remote(expand("gs://landerlab-20210106-thouis-waszac-bams/{files}.bam", files=config["files"]))
+		# GS.remote(expand("gs://landerlab-20210106-thouis-waszac-bams/{sample}.bam", sample=config["samples"]))
+		GS.remote("gs://landerlab-20210106-thouis-waszac-bams/{sample}.bam")
 		# "gs://landerlab-20210106-thouis-waszac-bams/{files}.bam"
 		# "data/Waszak_2015/Waszak_2015_gs_names.txt"
 	output: 
-		temp("processed/{dataset}/aligned/{sample}.bam")
+		temp("processed/{dataset}/aligned/{sample}.bam"),
 	resources:
 		mem = 8000
 	threads: 4
 	shell:
 		"""
 		cp {input} {output}
+		# samtools view -h {output} | head -n 100000 | samtools view -bS - > {output}
 		"""
 
 #Sort BAM files by coordinates
@@ -24,7 +26,7 @@ rule sort_bams_by_position:
 	input:
 		"processed/{dataset}/aligned/{sample}.bam"
 	output:
-		protected("processed/{dataset}/sorted_bam/{sample}.sortedByCoords.bam")
+		temp("processed/{dataset}/sorted_bam/{sample}.sortedByCoords.bam")
 	params:
 		local_tmp = "/tmp/" + uuid.uuid4().hex + "/"
 	resources:
@@ -46,7 +48,7 @@ rule index_bams:
 	input:
 		"processed/{dataset}/sorted_bam/{sample}.sortedByCoords.bam"
 	output:
-		"processed/{dataset}/sorted_bam/{sample}.sortedByCoords.bam.bai"
+		temp("processed/{dataset}/sorted_bam/{sample}.sortedByCoords.bam.bai")
 	resources:
 		mem = 50
 	threads: 1
@@ -61,8 +63,8 @@ rule filter_properly_paired:
 		bam = "processed/{dataset}/sorted_bam/{sample}.sortedByCoords.bam",
 		index = "processed/{dataset}/sorted_bam/{sample}.sortedByCoords.bam.bai"
 	output:
-		# temp("processed/{dataset}/filtered/{sample}.filtered.bam")
-		"processed/{dataset}/filtered/{sample}.filtered.bam"
+		temp("processed/{dataset}/filtered/{sample}.filtered.bam")
+		# "processed/{dataset}/filtered/{sample}.filtered.bam"
 	resources:
 		mem = 100
 	threads: 1
@@ -103,7 +105,7 @@ rule remove_reference_header:
 	shell:
 		"""
 		# Remove reference header
-		samtools view -H {input} | grep -v 'SN:gi'
+		# samtools view -H {input} | grep -v 'SN:gi'
 		samtools view -H {input} | grep -v 'SN:gi' > {output.new_header}
 		samtools reheader {output.new_header} {input} > {output.bam}
 		"""
@@ -113,7 +115,7 @@ rule reorder_bam:
 	input:
 		"processed/{dataset}/filtered/{sample}.rereheadered.bam"
 	output:
-		bam = "processed/{dataset}/filtered/{sample}.reordered.bam"
+		bam = temp("processed/{dataset}/filtered/{sample}.reordered.bam")
 	resources:
 		mem = 12000
 	threads: 4
@@ -131,7 +133,7 @@ rule remove_duplicates:
 		# "processed/{dataset}/filtered/{sample}.reheadered.bam"
 		"processed/{dataset}/filtered/{sample}.reordered.bam"
 	output:
-		bam = "processed/{dataset}/filtered/{sample}.no_duplicates.bam",
+		bam = temp("processed/{dataset}/filtered/{sample}.no_duplicates.bam"),
 		metrics = "processed/{dataset}/metrics/{sample}.MarkDuplicates.txt"
 		# bam = protected("processed/{dataset}/filtered/{sample}.no_duplicates.bam"),
 		# metrics = protected("processed/{dataset}/metrics/{sample}.MarkDuplicates.txt")
@@ -202,9 +204,9 @@ rule feat_cnt:
 rule make_all:
 	input:
 		#expand("processed/{{dataset}}/aligned/{sample}.bam", sample=config["samples"]),
-		expand("processed/{{dataset}}/sorted_bam/{sample}.sortedByCoords.bam.bai", sample=config["samples"]),
+		# expand("processed/{{dataset}}/sorted_bam/{sample}.sortedByCoords.bam.bai", sample=config["samples"]),
 		#expand("processed/{{dataset}}/filtered/{sample}.no_duplicates.bam", sample=config["samples"]),
-		expand("processed/{{dataset}}/peaks/{sample}.no_duplicates.narrowPeak", sample=config["samples"]),
+		# expand("processed/{{dataset}}/peaks/{sample}.no_duplicates.narrowPeak", sample=config["samples"]),
 		expand("processed/{{dataset}}/counts/{sample}.no_duplicates.counts.txt", sample=config["samples"]),
 	output:
 		"processed/{dataset}/out.txt",

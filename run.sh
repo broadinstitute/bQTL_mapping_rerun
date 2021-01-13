@@ -37,7 +37,7 @@
 gcloud auth login
 
 #Run the processing pipeline
-snakemake processed/PU1/out.txt -s ChIP_pipeline_SE.snakefile --configfile configs/config_PU1.yaml --cores 5
+snakemake processed/PU1/out.txt -s ChIP_pipeline_SE.snakefile -j 5 --configfile configs/config_PU1.yaml --cores 5
 
 #Map QTLs
 # snakemake -n -s map_QTLs.snakefile processed/PU1/out.txt --configfile configs/config_PU1.yaml
