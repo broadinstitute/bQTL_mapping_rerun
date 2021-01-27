@@ -1,7 +1,12 @@
-# Reanalysis of ATAC-seq data from blood cell types
-This repostiory contains reanalysis of ATAC-seq data from the following two papers:
+# Reanalysis of ChIP-seq data for TF PU.1 in lymphoblastoid cell lines
 
-1. Corces, M. Ryan, et al. "Lineage-specific and single-cell chromatin accessibility charts human hematopoiesis and leukemia evolution." *Nature genetics* (2016).
-2. Chen, Xingqi, et al. "ATAC-see reveals the accessible genome by transposase-mediated imaging and sequencing." *Nature Methods* 13.12 (2016): 1013-1020.
+
+
+This repostiory contains reanalysis of ChIP-seq data from the following paper:
+
+* Waszak, S. M. et al. Population variation and genetic control of modular chromatin architecture in humans. *Cell.* **162**, 1039–1050 (2015).
 
 The raw sequencing data were downloaded from GEO (accessions GSE74912 and GSE76006) and processed using a pipeline built with Snakemake. See [here](http://snakemake.bitbucket.org/snakemake-tutorial.html) for an introductory tutorial to Snakemake.
+
+
+Credits - Fork of https://github.com/kauralasoo/Blood_ATAC. I only look at Waszak et al 2015 data.

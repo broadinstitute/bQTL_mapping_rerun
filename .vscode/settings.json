@@ -1,3 +1,4 @@
 {
-    "python.pythonPath": "/home/jupyter/.conda/envs/PU1_env/bin/python"
+    "python.pythonPath": "/home/jupyter/.conda/envs/PU1_env/bin/python",
+    "jupyter.jupyterServerType": "local"
 }

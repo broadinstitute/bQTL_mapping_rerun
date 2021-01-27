@@ -6,10 +6,7 @@ GS = GSRemoteProvider()
 # Copy input bams from Google Bucket
 rule get_input_files: 
 	input: 
-		# GS.remote(expand("gs://landerlab-20210106-thouis-waszac-bams/{sample}.bam", sample=config["samples"]))
 		GS.remote("gs://landerlab-20210106-thouis-waszac-bams/{sample}.bam")
-		# "gs://landerlab-20210106-thouis-waszac-bams/{files}.bam"
-		# "data/Waszak_2015/Waszak_2015_gs_names.txt"
 	output: 
 		temp("processed/{dataset}/aligned/{sample}.bam"),
 	resources:
@@ -18,7 +15,6 @@ rule get_input_files:
 	shell:
 		"""
 		cp {input} {output}
-		# samtools view -h {output} | head -n 100000 | samtools view -bS - > {output}
 		"""
 
 #Sort BAM files by coordinates
@@ -28,7 +24,7 @@ rule sort_bams_by_position:
 	output:
 		temp("processed/{dataset}/sorted_bam/{sample}.sortedByCoords.bam")
 	params:
-		local_tmp = "/tmp/" + uuid.uuid4().hex + "/"
+		local_tmp = "/tmp/" + uuid.uuid4().hex + "1/"
 	resources:
 		mem = 8000
 	threads: 4
@@ -40,8 +36,6 @@ rule sort_bams_by_position:
 		cp {params.local_tmp}{wildcards.sample}.sortedByCoords.bam {output}
 		rm -r {params.local_tmp}
 		"""
-# samtools sort -T {params.local_tmp}/{wildcards.sample} -O bam -@ {threads} -o {params.local_tmp}/{wildcards.sample}.sortedByCoords.bam {params.local_tmp}/{wildcards.sample}.bam
-# cp {params.local_tmp}/{wildcards.sample}.sortedByCoords.bam {output}
 
 #Index sorted bams
 rule index_bams:
@@ -64,7 +58,6 @@ rule filter_properly_paired:
 		index = "processed/{dataset}/sorted_bam/{sample}.sortedByCoords.bam.bai"
 	output:
 		temp("processed/{dataset}/filtered/{sample}.filtered.bam")
-		# "processed/{dataset}/filtered/{sample}.filtered.bam"
 	resources:
 		mem = 100
 	threads: 1
@@ -87,7 +80,6 @@ rule remove_bwa_header:
 	threads: 1
 	shell:
 		"""
-		# Remove bwa header
 		samtools view -H {input} | grep -v 'ID:bwa' > {output.new_header}
 		samtools reheader {output.new_header} {input} > {output.bam}
 		"""
@@ -104,8 +96,6 @@ rule remove_reference_header:
 	threads: 1
 	shell:
 		"""
-		# Remove reference header
-		# samtools view -H {input} | grep -v 'SN:gi'
 		samtools view -H {input} | grep -v 'SN:gi' > {output.new_header}
 		samtools reheader {output.new_header} {input} > {output.bam}
 		"""
@@ -121,28 +111,22 @@ rule reorder_bam:
 	threads: 4
 	shell:
 		"""
-		# samtools view -H {input}
 		java -jar {config[picard_path]} ReorderSam INPUT={input} OUTPUT={output.bam} SEQUENCE_DICTIONARY={config[dictionary]} VALIDATION_STRINGENCY=LENIENT
-		# samtools view -H {output}
 		"""
 
 #Remove duplicates using Picard MarkDuplicates
 rule remove_duplicates:
 	input:
-		# "processed/{dataset}/filtered/{sample}.filtered.bam"
-		# "processed/{dataset}/filtered/{sample}.reheadered.bam"
 		"processed/{dataset}/filtered/{sample}.reordered.bam"
 	output:
 		bam = temp("processed/{dataset}/filtered/{sample}.no_duplicates.bam"),
+		# bam = GS.remote("gs://landerlab-20210106-thouis-waszac-bams/{dataset}/{sample}.no_duplicates.bam"),
 		metrics = "processed/{dataset}/metrics/{sample}.MarkDuplicates.txt"
-		# bam = protected("processed/{dataset}/filtered/{sample}.no_duplicates.bam"),
-		# metrics = protected("processed/{dataset}/metrics/{sample}.MarkDuplicates.txt")
 	resources:
 		mem = 12000
 	threads: 4
 	shell:
 		"""
-		# samtools view -H {input}
 		java -jar {config[picard_path]} MarkDuplicates I={input} O={output.bam} REMOVE_DUPLICATES=true VALIDATION_STRINGENCY=LENIENT METRICS_FILE={output.metrics}
 		"""
 
@@ -151,9 +135,9 @@ rule peaks:
     input:
         "processed/{dataset}/filtered/{sample}.no_duplicates.bam",
     output:
-        narrowPeaks = protected("processed/{dataset}/peaks/{sample}.no_duplicates.narrowPeak"),
-        summits = protected("processed/{dataset}/peaks/{sample}.no_duplicates.summits.bed"),
-        saf_annot = protected("processed/{dataset}/peaks/{sample}.no_duplicates.saf"),
+        narrowPeaks = "processed/{dataset}/peaks/{sample}.no_duplicates.narrowPeak",
+        summits = "processed/{dataset}/peaks/{sample}.no_duplicates.summits.bed",
+        saf_annot = "processed/{dataset}/peaks/{sample}.no_duplicates.saf",
     resources:
         mem = 10000,
     threads:
@@ -197,17 +181,56 @@ rule feat_cnt:
         """
 		featureCounts -p -C -D 5000 -d 50 -F SAF -a {input.peak_annot} -o {output.counts} {input.bam}
         """
-# featureCounts -p -C -D 5000 -d 50 -a {config[PU1_peaks_gtf]} -o {output.counts} {input.bam}
-# featureCounts -p -C -D 5000 -d 50 -F GTF -t "exon" -a {input.peak_annot} -o {output.counts} {input.bam}
+
+# Merge peaks into consensus
+rule consensus_peaks:
+    input:
+        peaks = expand("processed/{{dataset}}/peaks/{sample}.no_duplicates.narrowPeak", sample=config["samples"]),
+    output:
+        consensus_peaks = "processed/{dataset}/merged_peaks/consensus_peaks.bed",
+        consensus_saf = "processed/{dataset}/merged_peaks/consensus_peaks.saf",
+        consensus_gc = "processed/{dataset}/merged_peaks/consensus_peaks.GCcontent.txt",
+        allpeaks = temp("processed/{dataset}/merged_peaks/allpeaks.bed"),
+        allpeaks_counts = temp("processed/{dataset}/merged_peaks/allpeaks_counts.bed"),
+    params:
+        threshold = 30,
+        ref_genome = "landerlab-bowtie-hg19-index-misc/genome.fa"
+    shell:
+        """
+        # merge and sort all peak files
+        cat {input.peaks} | bedtools sort -i - > {output.allpeaks}
+        # count overlaps of peaks w/ all peaks
+        bedtools coverage -a {output.allpeaks} -b {output.allpeaks} -sorted -counts > {output.allpeaks_counts}
+        # Filter: extract just those peaks with at least threshold peaks overlapping, and merge into consensus
+        awk -v threshold={params.threshold} '$NF>=threshold' {output.allpeaks_counts} | bedtools merge -i - > {output.consensus_peaks}
+        # get GC content
+        bedtools nuc -fi {params.ref_genome} -bed {output.consensus_peaks} > {output.consensus_gc}
+        # Make consensus peaks BED --> SAF
+        awk 'OFS="\t" {{print $1"."$2"."$3, $1, $2, $3, "."}}' {output.consensus_peaks} > {output.consensus_saf}
+        """
+
+rule feat_cnt_consensus:
+    input:
+        # bam = "processed/{dataset}/filtered/{sample}.no_duplicates.bam",
+        bam = GS.remote("processed/{dataset}/filtered/{sample}.no_duplicates.bam"),
+        peak_annot = rules.consensus_peaks.output.consensus_saf
+    output:
+        counts = "processed/{dataset}/merged_counts/{sample}.no_duplicates.consensus.counts.txt",
+        summary = "processed/{dataset}/merged_counts/{sample}.no_duplicates.consensus.counts.txt.summary",
+    threads:
+        6,
+    resources:
+        mem = 20000,
+    shell:
+        """
+		featureCounts -p -C -D 5000 -d 50 -F SAF -a {input.peak_annot} -o {output.counts} {input.bam}
+        """
 
 #Make sure that all final output files get created
 rule make_all:
 	input:
-		#expand("processed/{{dataset}}/aligned/{sample}.bam", sample=config["samples"]),
-		# expand("processed/{{dataset}}/sorted_bam/{sample}.sortedByCoords.bam.bai", sample=config["samples"]),
-		#expand("processed/{{dataset}}/filtered/{sample}.no_duplicates.bam", sample=config["samples"]),
-		# expand("processed/{{dataset}}/peaks/{sample}.no_duplicates.narrowPeak", sample=config["samples"]),
-		expand("processed/{{dataset}}/counts/{sample}.no_duplicates.counts.txt", sample=config["samples"]),
+		expand("processed/{{dataset}}/metrics/{sample}.MarkDuplicates.txt", sample=config["samples"]),
+		expand("processed/{{dataset}}/merged_counts/{sample}.no_duplicates.consensus.counts.txt", sample=config["samples"]),
 	output:
 		"processed/{dataset}/out.txt",
 	resources:
@@ -228,7 +251,7 @@ rule make_all:
 # 		index_name = config["bt_index_name"],
 # 		basename = config["bt_basename"],
 # 		rg="@RG\tID:{sample}\tSM:{sample}",
-# 		tmp_fq = "/tmp/" + uuid.uuid4().hex + ".fastq.gz",
+# 		tmp_fq = "/tmp/" + uuid.uuid4().hex + ".fastq.gz"
 # 		tmp_sam = "/tmp/" + uuid.uuid4().hex + ".sam",
 # 		tmp_bam = "/tmp/" + uuid.uuid4().hex + ".bam",
 # 		tmp_index_dir = "/tmp/" + uuid.uuid4().hex + "/"
@@ -253,20 +276,3 @@ rule make_all:
 # 		"""
 # bwa aln -t {threads} {params.tmp_index_dir}{params.index_name} {params.tmp_fq} > {params.tmp_sai}
 # bwa samse -r '{params.rg}' {params.tmp_index_dir}{params.index_name} {params.tmp_sai} {params.tmp_fq} | samtools view -b - > {params.tmp_bam}
-
-#Remove bowtie2 entry from the BAM file header (conflicts with MarkDuplicates)
-# rule remove_bt_header:
-# 	input:
-# 		"processed/{dataset}/filtered/{sample}.filtered.bam"
-# 	output:
-# 		new_header = temp("processed/{dataset}/filtered/{sample}.new_header.txt"),
-# 		bam = temp("processed/{dataset}/filtered/{sample}.reheadered.bam")
-# 	resources:
-# 		mem = 100
-# 	threads: 1
-# 	shell:
-# 		"""
-# 		# samtools view -H {input} | grep -v 'ID:bowtie2' > {output.new_header}
-# 		# samtools view -H {input} | grep -v '^@' > {output.new_header}
-# 		samtools reheader {output.new_header} {input} > {output.bam}
-# 		"""

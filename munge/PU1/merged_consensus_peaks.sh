@@ -41,5 +41,8 @@ bedtools merge -i ${OUTPUT_PATH}/goodpeaks.bed > ${OUTPUT_PATH}/consensus.bed
 # Output GC content (%GC content in column 5)
 bedtools nuc -fi $REF_GENOME -bed ${OUTPUT_PATH}/consensus.bed > ${OUTPUT_PATH}/GCcontent.txt
 
+# Make consensus peaks BED --> SAF
+awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' ${OUTPUT_PATH}/consensus.bed > ${OUTPUT_PATH}/consensus.saf
+
 # Done
 echo "Done"
