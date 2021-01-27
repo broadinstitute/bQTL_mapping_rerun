@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Moved to ChIP_pipeline_SE.snakefile as rule consensus_peaks
+# This copy produces a histogram relevant to deciding threshold
+
 # Parameters
 INPUT_PATH="processed/PU1/peaks"
 OUTPUT_PATH="results/PU1"

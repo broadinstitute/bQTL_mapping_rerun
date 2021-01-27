@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Merge 47 count files into one matrix of peaks (2662) x samples (47)
+
 # Parameters
 INPUT_PATH="processed/PU1/merged_counts"
 TEMP_FILE="results/PU1/TEMP.txt"
