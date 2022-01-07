@@ -119,7 +119,8 @@ rule remove_duplicates:
 	input:
 		"processed/{dataset}/filtered/{sample}.reordered.bam"
 	output:
-		bam = temp("processed/{dataset}/filtered/{sample}.no_duplicates.bam"),
+		bam = "processed/{dataset}/filtered/{sample}.no_duplicates.bam",
+		# bam = temp("processed/{dataset}/filtered/{sample}.no_duplicates.bam"),
 		# bam = GS.remote("gs://landerlab-20210106-thouis-waszac-bams/{dataset}/{sample}.no_duplicates.bam"),
 		metrics = "processed/{dataset}/metrics/{sample}.MarkDuplicates.txt"
 	resources:
@@ -211,26 +212,29 @@ rule consensus_peaks:
 
 rule feat_cnt_consensus:
     input:
-        # bam = "processed/{dataset}/filtered/{sample}.no_duplicates.bam",
-        bam = GS.remote("processed/{dataset}/filtered/{sample}.no_duplicates.bam"),
-        peak_annot = rules.consensus_peaks.output.consensus_saf
+        bam = "processed/{dataset}/filtered/{sample}.no_duplicates.bam",
+        # bam = GS.remote("processed/{dataset}/filtered/{sample}.no_duplicates.bam"),
+        # bam = GS.remote("landerlab-20210106-thouis-waszac-bams/{dataset}/{sample}.no_duplicates.bam"),
+        # peak_annot = rules.consensus_peaks.output.consensus_saf
+        peak_annot = "/home/jupyter/DATA/TehranchiReanalysis/45_chr1_10_hisat_peakreads/45_chr1_10_hisat_peakreads.20.saf"
     output:
-        counts = "processed/{dataset}/merged_counts/{sample}.no_duplicates.consensus.counts.txt",
-        summary = "processed/{dataset}/merged_counts/{sample}.no_duplicates.consensus.counts.txt.summary",
+        counts = "processed/{dataset}/merged_counts_cisVar/{sample}.no_duplicates.consensus.counts.txt",
+        summary = "processed/{dataset}/merged_counts_cisVar/{sample}.no_duplicates.consensus.counts.txt.summary",
     threads:
         6,
     resources:
         mem = 20000,
     shell:
         """
-		featureCounts -p -C -D 5000 -d 50 -F SAF -a {input.peak_annot} -o {output.counts} {input.bam}
+		# featureCounts -p -C -D 5000 -d 50 -F SAF -a {input.peak_annot} -o {output.counts} {input.bam}
+		featureCounts -F SAF -a {input.peak_annot} -o {output.counts} {input.bam}
         """
 
 #Make sure that all final output files get created
 rule make_all:
 	input:
-		expand("processed/{{dataset}}/metrics/{sample}.MarkDuplicates.txt", sample=config["samples"]),
-		expand("processed/{{dataset}}/merged_counts/{sample}.no_duplicates.consensus.counts.txt", sample=config["samples"]),
+		# expand("processed/{{dataset}}/metrics/{sample}.MarkDuplicates.txt", sample=config["samples"]),
+		expand("processed/{{dataset}}/merged_counts_cisVar/{sample}.no_duplicates.consensus.counts.txt", sample=config["samples"]),
 	output:
 		"processed/{dataset}/out.txt",
 	resources:

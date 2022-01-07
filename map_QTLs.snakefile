@@ -1,11 +1,11 @@
-from snakemake.remote.GS import RemoteProvider as GSRemoteProvider
-GS = GSRemoteProvider()
+# from snakemake.remote.GS import RemoteProvider as GSRemoteProvider
+# GS = GSRemoteProvider()
 
 rule map_qtls:
 	input:
-		expand("processed/{{study}}/qtltools/output/{annot_type}/{condition}.permuted.txt.gz", annot_type = config["annot_type"], condition = config["conditions"]),
-		expand("processed/{{study}}/qtltools/output/{annot_type}/sorted/{condition}.nominal.sorted.txt.gz", annot_type = config["annot_type"], condition = config["conditions"]),
-		expand("processed/{{study}}/qtltools/output/{annot_type}/sorted/{condition}.nominal.sorted.txt.gz.tbi", annot_type = config["annot_type"], condition = config["conditions"]),
+		expand("processed/{{study}}/qtltools_hisat2/output/{annot_type}/{condition}.permuted.txt.gz", annot_type = config["annot_type"], condition = config["conditions"]),
+		expand("processed/{{study}}/qtltools_hisat2/output/{annot_type}/sorted/{condition}.nominal.sorted.txt.gz", annot_type = config["annot_type"], condition = config["conditions"]),
+		expand("processed/{{study}}/qtltools_hisat2/output/{annot_type}/sorted/{condition}.nominal.sorted.txt.gz.tbi", annot_type = config["annot_type"], condition = config["conditions"]),
 	output:
 		"processed/{study}/out.txt"
 	resources:
@@ -17,10 +17,10 @@ rule map_qtls:
 #Compress and index input bed file
 rule compress_bed:
 	input:
-		bed = "processed/{study}/qtltools/input/{annot_type}/{condition}.norm_prop.txt"
+		bed = "processed/{study}/qtltools_hisat2/input/{annot_type}/{condition}.norm_prop.txt"
 	output:
-		bed = protected("processed/{study}/qtltools/input/{annot_type}/{condition}.norm_prop.txt.gz"),
-		bed_index = protected("processed/{study}/qtltools/input/{annot_type}/{condition}.norm_prop.txt.gz.tbi")
+		bed = protected("processed/{study}/qtltools_hisat2/input/{annot_type}/{condition}.norm_prop.txt.gz"),
+		bed_index = protected("processed/{study}/qtltools_hisat2/input/{annot_type}/{condition}.norm_prop.txt.gz.tbi")
 	threads: 1
 	resources:
 		mem = 100
@@ -32,12 +32,12 @@ rule compress_bed:
 #Run QTLtools in permutation mode
 rule permutation_run:
 	input:
-		bed = "processed/{study}/qtltools/input/{annot_type}/{condition}.norm_prop.txt.gz",
-		bed_index = "processed/{study}/qtltools/input/{annot_type}/{condition}.norm_prop.txt.gz.tbi",
-		covariates = "processed/{study}/qtltools/input/{annot_type}/{condition}.covariates_prop.txt",
+		bed = "processed/{study}/qtltools_hisat2/input/{annot_type}/{condition}.norm_prop.txt.gz",
+		bed_index = "processed/{study}/qtltools_hisat2/input/{annot_type}/{condition}.norm_prop.txt.gz.tbi",
+		covariates = "processed/{study}/qtltools_hisat2/input/{annot_type}/{condition}.covariates_prop.txt",
 		# vcf = GS.remote("gs://landerlab-vcf/1000_genomes_vcfs/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"),
 		# vcf_i = GS.remote("gs://landerlab-vcf/1000_genomes_vcfs/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz.tbi")
-		vcf = "landerlab-vcf/1000_genomes_vcfs/Waszak_47_samples.chr1.vcf.gz"
+		vcf = "/home/jupyter/DATA/1000_genomes_vcfs/Waszak_47_samples.merged_chr1_10.vcf.gz"
 	output:
 		temp("processed/{study}/qtltools/output/{annot_type}/batches/{condition}.permutation.batch.{batch}.{n_batches}.txt")
 	params:
@@ -48,7 +48,7 @@ rule permutation_run:
 	shell:
 		"""
 		# tabix -p vcf {input.vcf}
-		QTLtools cis --vcf {input.vcf} --bed {input.bed} --cov {input.covariates} --chunk {params.chunk} --out {output} --window {config[cis_window]} --permute 10000 || touch {output}
+		QTLtools cis --vcf {input.vcf} --bed {input.bed} --cov {input.covariates} --chunk {params.chunk} --out {output} --window {config[cis_window]} --permute 100000 || touch {output}
 		"""
 
 
@@ -77,7 +77,7 @@ rule nominal_run:
 		covariates = "processed/{study}/qtltools/input/{annot_type}/{condition}.covariates_prop.txt",
 		# vcf = GS.remote("gs://landerlab-vcf/1000_genomes_vcfs/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"),
 		# vcf_i = GS.remote("gs://landerlab-vcf/1000_genomes_vcfs/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz.tbi")
-		vcf = "landerlab-vcf/1000_genomes_vcfs/Waszak_47_samples.chr1.vcf.gz"
+		vcf = "/home/jupyter/DATA/1000_genomes_vcfs/Waszak_47_samples.merged_chr1_10.vcf.gz"
 	output:
 		temp("processed/{study}/qtltools/output/{annot_type}/nominal_batches/{condition}.nominal.batch.{batch}.{n_batches}.txt")
 	params:
