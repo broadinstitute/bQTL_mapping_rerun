@@ -1,15 +1,9 @@
-
-data/.DS_Store
-download_scripts/.DS_Store
-munge/.DS_Store
-.DS_Store
-.DS_Store
-.snakemake
+*.DS_Store
+*.snakemake
 .vscode
 *.Rproj*
 results
 processed
-.Rproj.user
 .Rhistory
 landerlab-bowtie-hg19-index
 landerlab-bowtie-hg19-index-misc
@@ -18,4 +12,5 @@ renamed_bams
 metadata
 1KG_PCA
 results
-munge/PU1/.ipynb_checkpoints
+data
+*.ipynb_checkpoints
